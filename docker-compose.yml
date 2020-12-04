@@ -1,0 +1,72 @@
+version: "3.8"
+
+services:
+  composer:
+    build:
+      context: ./composer
+      args:
+        GID: ${GID}
+        GROUP: ${GROUP}
+        UID: ${UID}
+        USER: ${USER}
+        WORKDIR: ${WORKDIR}
+    user: ${UID}:${GID}
+    volumes:
+      - ./src:${WORKDIR}
+    working_dir: ${WORKDIR}
+
+  mysql:
+    command: --default-authentication-plugin=mysql_native_password
+    image: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      - ./mysql/var/lib/mysql:/var/lib/mysql
+
+  nginx:
+    depends_on:
+      - php-fpm
+      - mysql
+    environment:
+      NGINX_CONF_SERVER_NAME: ${NGINX_CONF_SERVER_NAME}
+      NGINX_CONF_ROOT: ${NGINX_CONF_ROOT}
+    image: nginx:stable-alpine
+    ports:
+     - "8080:80"
+    volumes:
+      - ./nginx/etc/nginx/templates:/etc/nginx/templates:ro
+      - ./src:${WORKDIR}
+
+  node:
+    build: ./node
+    volumes:
+      - ./src:${WORKDIR}
+    working_dir: ${WORKDIR}
+
+  php-fpm:
+    build:
+      context: ./php-fpm
+      args:
+        GID: ${GID}
+        GROUP: ${GROUP}
+        UID: ${UID}
+        USER: ${USER}
+        WORKDIR: ${WORKDIR}
+    user: ${UID}:${GID}
+    volumes:
+      - ./src:${WORKDIR}
+    working_dir: ${WORKDIR}
+
+  phpmyadmin:
+    depends_on:
+      - mysql
+    environment:
+      - PMA_HOST=${PMA_HOST}
+      - PMA_USER=${PMA_USER}
+      - PMA_PASSWORD=${PMA_PASSWORD}
+    image: phpmyadmin
+    ports:
+      - "8081:80"
